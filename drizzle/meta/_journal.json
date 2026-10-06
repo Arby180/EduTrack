@@ -1,0 +1,34 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1790750588029,
+      "tag": "0000_supabase_initial",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1790762460571,
+      "tag": "0001_school_workflows",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791044488594,
+      "tag": "0002_outstanding_tarot",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791119403841,
+      "tag": "0003_hesitant_jane_foster",
+      "breakpoints": true
+    }
+  ]
+}
