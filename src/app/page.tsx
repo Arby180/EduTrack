@@ -243,16 +243,16 @@ export default function HomePage() {
               </p>
             </li>
             <li>
-              <strong>Confirm your email</strong>
+              <strong>Enter your dashboard</strong>
               <p>
-                Open the EduTrack confirmation email and confirm your account.
+                Your Google account creates your student profile automatically.
               </p>
             </li>
             <li>
-              <strong>Get school approval</strong>
+              <strong>Connect your school records</strong>
               <p>
-                Your administrator assigns your student number and class. Once
-                approved, sign in to see your workspace.
+                Your administrator assigns your student number and class. You
+                can sign in while your school records are being set up.
               </p>
             </li>
           </ol>
@@ -364,8 +364,8 @@ export default function HomePage() {
             <h3>Quick answers</h3>
             {[
               [
-                "How do I get my account approved?",
-                "Confirm your email first, then contact your school administrator. They need to assign your student number and class before approving access. After approval, use Continue with Google to sign in.",
+                "How do I create an account?",
+                "Choose Continue with Google. Your student account is created automatically and appears in the administrator's People list. Contact your school to assign your student number and class.",
               ],
               [
                 "My attendance or grade looks incorrect. What should I do?",
@@ -377,7 +377,7 @@ export default function HomePage() {
               ],
               [
                 "I cannot sign in. Where should I start?",
-                "If you registered with Google, choose Continue with Google using the same account. Email confirmation and school approval must both be complete. For school-issued email and password accounts, ask your administrator for help with access.",
+                "If you registered with Google, choose Continue with Google using the same account. New student accounts are created automatically. If your existing account is inactive or awaiting approval, contact your administrator. For school-issued email and password accounts, ask your administrator for help with access.",
               ],
             ].map(([question, answer]) => (
               <details key={question}>
