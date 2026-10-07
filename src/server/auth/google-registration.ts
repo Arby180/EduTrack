@@ -20,7 +20,25 @@ export async function requestGoogleRegistration(
   database: Database = db,
   send = sendRegistrationEmail,
 ): Promise<"sent" | "wait" | "unavailable"> {
-  if (!env.AUTH_URL || !env.RESEND_API_KEY || !env.EMAIL_FROM)
+  const gmail =
+    env.REGISTRATION_EMAIL_PROVIDER === "gmail" &&
+    env.GMAIL_CLIENT_ID &&
+    env.GMAIL_CLIENT_SECRET &&
+    env.GMAIL_REFRESH_TOKEN &&
+    env.GMAIL_SENDER
+      ? {
+          clientId: env.GMAIL_CLIENT_ID,
+          clientSecret: env.GMAIL_CLIENT_SECRET,
+          refreshToken: env.GMAIL_REFRESH_TOKEN,
+          sender: env.GMAIL_SENDER,
+        }
+      : undefined;
+  if (
+    !env.AUTH_URL ||
+    (env.REGISTRATION_EMAIL_PROVIDER === "gmail"
+      ? !gmail
+      : !env.RESEND_API_KEY || !env.EMAIL_FROM)
+  )
     return "unavailable";
   const token = randomBytes(32).toString("hex");
   const now = new Date();
@@ -47,6 +65,7 @@ export async function requestGoogleRegistration(
   const url = new URL("/confirm-account", env.AUTH_URL);
   url.searchParams.set("token", token);
   const result = await send({
+    gmail,
     apiKey: env.RESEND_API_KEY,
     from: env.EMAIL_FROM,
     email: identity.email,

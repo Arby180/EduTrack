@@ -30,7 +30,7 @@ export function LoginForm({
       });
       if (result?.error)
         setError(
-          "Invalid email or password, or your account is inactive. Registered with Google? Use Continue with Google.",
+          "Invalid email or password, or your account is inactive. Registered with Google? Use Continue with Google after administrator approval.",
         );
       else window.location.href = "/dashboard";
     } catch {
@@ -80,9 +80,8 @@ export function LoginForm({
         </button>
       )}
       <p className="muted mt-5 text-xs leading-5">
-        Use your school account, or register with Google. New Google users
-        receive a student account automatically. Your school assigns your
-        student number and class.
+        Use your school account, or register with Google. New Google accounts
+        require email confirmation and administrator approval.
       </p>
     </>
   );

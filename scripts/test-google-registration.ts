@@ -77,13 +77,11 @@ try {
       checks += 18;
 
       const adminId = crypto.randomUUID();
-      await tx
-        .insert(users)
-        .values({
-          id: adminId,
-          email: `${adminId}@example.test`,
-          role: "admin",
-        });
+      await tx.insert(users).values({
+        id: adminId,
+        email: `${adminId}@example.test`,
+        role: "admin",
+      });
       const caller = (role: "admin" | "student", id: string) =>
         appRouter.createCaller({
           db: tx as unknown as typeof db,
@@ -126,6 +124,53 @@ try {
       assert.equal(approved?.isActive, true);
       assert.equal(approved?.approvalPending, false);
       checks += 5;
+
+      const pendingAdminId = crypto.randomUUID();
+      const pendingAdminEmail = `${pendingAdminId}@example.test`;
+      await tx
+        .insert(users)
+        .values({
+          id: pendingAdminId,
+          email: pendingAdminEmail,
+          role: "student",
+          isActive: false,
+          approvalPending: true,
+        });
+      await tx
+        .insert(students)
+        .values({
+          userId: pendingAdminId,
+          studentNumber: `PENDING-${pendingAdminId}`,
+        });
+      await caller("admin", adminId).admin.saveUser({
+        id: pendingAdminId,
+        name: "Pending administrator",
+        email: pendingAdminEmail,
+        role: "admin",
+        classRoomId: null,
+      });
+      const assigned = await tx.query.users.findFirst({
+        where: eq(users.id, pendingAdminId),
+      });
+      assert.equal(assigned?.role, "admin");
+      assert.equal(assigned?.isActive, false);
+      assert.equal(assigned?.approvalPending, true);
+      assert.equal(
+        await tx.query.students.findFirst({
+          where: eq(students.userId, pendingAdminId),
+        }),
+        undefined,
+      );
+      await caller("admin", adminId).admin.setActive({
+        id: pendingAdminId,
+        isActive: true,
+      });
+      const approvedAdmin = await tx.query.users.findFirst({
+        where: eq(users.id, pendingAdminId),
+      });
+      assert.equal(approvedAdmin?.isActive, true);
+      assert.equal(approvedAdmin?.approvalPending, false);
+      checks += 6;
 
       const expired = {
         ...identity,

@@ -16,20 +16,41 @@ AUTH_GOOGLE_SECRET="your-client-secret"
 ```
 
 6. Restart the app. The login page now shows **Continue with Google**.
-7. Existing active school accounts can sign in using their matching verified Google email. New verified Google users automatically receive an active student account. The `.test` demo emails cannot be used with Google.
-8. New users enter their student dashboard immediately and appear in People. Administrators assign student numbers and classes afterward. Existing inactive or approval-pending accounts remain restricted. Public registration never creates administrators.
+7. Existing active school accounts can sign in using their matching verified Google email. New Google users receive an email confirmation link. The `.test` demo emails cannot be used with Google.
+8. New users confirm their email to create an inactive student account, then wait for administrator approval. In People, an admin assigns the student number and class and selects Approve access. Unverified, pending, and inactive accounts cannot sign in. Public registration never creates administrators.
 
 For deployment, register `https://YOUR-DOMAIN/api/auth/callback/google`, configure the same server variables and a strong `AUTH_SECRET`, and set `AUTH_URL` to the deployed origin. Locally, use `AUTH_URL="http://localhost:3000"` (adjust the port if needed); this also allows authentication when using `npm run start`. Keep the localhost redirect while developing. Registering a callback in Supabase Auth is not necessary because NextAuth handles Google.
 
 References: [Auth.js Google provider](https://authjs.dev/getting-started/providers/google), [Google web-server OAuth guide](https://developers.google.com/identity/protocols/oauth2/web-server).
 
-## Automatic Google registration
+## Google registration confirmation emails
 
-Google must return a verified email. New identities are recorded as active students with a Google account link and an unassigned student profile in one transaction. Repeated sign-ins reuse the same user. No Resend key, custom domain, confirmation email, or manual approval is needed for new registrations. Existing users retain their role and activation/approval state. Administrators assign a real student number and class in People.
+For Gmail API delivery without an App Password or custom domain, follow [Gmail registration setup](gmail-registration.md). Set `REGISTRATION_EMAIL_PROVIDER=gmail` and the four `GMAIL_*` server variables described there. The Resend setup below is an alternative, not a requirement for Gmail registration delivery. Guardian emails continue to use Resend.
 
-Legacy confirmation links are still supported for previously requested registrations; those accounts retain the original approval requirement. Guardian email delivery still uses Resend and its sender restrictions.
+Google verifies the selected identity first. For a new email, EduTrack sends a confirmation link and shows Check your email. No school account or session is created yet. The email link opens a page with a **Confirm my account** button; the explicit submission prevents email scanners from creating accounts just by opening links.
 
-Run `node --env-file=.env --import tsx scripts/test-auto-registration.ts` for rollback-only integration checks. No email is sent.
+Confirmation atomically consumes the link and creates an inactive student account and Google account link. Administrators see **Awaiting approval** in People. Edit the pending account to choose Student or Admin. For students, assign a real student number and class. Save, then select **Approve access**. Confirmation returns the user to login without creating a session. The student can then sign in with Google. Existing active accounts sign in normally; deactivated accounts remain blocked. No extra success-notification email is sent on routine logins.
+
+1. Create a [Resend account](https://resend.com) using the Gmail address you will test with.
+2. Create an API key with sending permission and save these server variables locally:
+
+```dotenv
+RESEND_API_KEY="your-resend-api-key"
+EMAIL_FROM="onboarding@resend.dev"
+AUTH_URL="http://localhost:3000"
+```
+
+3. The test sender only sends to your Resend account email. For other recipients, verify a domain you own and set EMAIL_FROM to an address on it. A personal Gmail address cannot be used as this sender.
+4. Restart EduTrack. Test with a Google email that does not already have an EduTrack account. Check the inbox/spam folder, follow the link, and confirm the account.
+5. Log in separately as an existing administrator, review the pending account in People, assign its student number and class, then approve access. Return to Google sign-in as the student.
+
+Links expire after 30 minutes and can be consumed once. Only a SHA-256 hash is stored. Requests are limited to one email per address per minute; a replacement invalidates the previous link. Failed email requests show an error and never create an account. Requests time out after eight seconds without automatic retry; inspect Resend logs if delivery is uncertain. Expired pending requests can be replaced by another Google attempt.
+
+AUTH_URL determines the confirmation link's origin. For deployment, set it to the real HTTPS domain. A localhost link must be opened on the computer running EduTrack, not a phone. Google OAuth audience/test-user restrictions also still apply. Keep API keys and confirmation links private.
+
+Run `npm run test:registration` for rollback-only Supabase tests with mocked emails. No real messages are sent by the tests.
+
+References: [Resend test sender restrictions](https://resend.com/docs/knowledge-base/403-error-resend-dev-domain), [send email API](https://resend.com/docs/api-reference/emails/send-email).
 
 ## Guardian email notifications (Resend)
 
@@ -82,4 +103,4 @@ References: [Twilio SMS quickstart](https://www.twilio.com/docs/messaging/quicks
 6. Admin: publish an announcement and verify it appears for the student.
 7. Admin: export a report and, once Twilio is configured, review and send an authorized test text.
 
-Teacher and parent portals remain removed as requested. Admins perform the original proposal's teacher duties, and guardians receive notifications without login accounts. Google registration automatically creates active student accounts; admins manage their school records afterward.
+Teacher and parent portals remain removed as requested. Admins perform the original proposal's teacher duties, and guardians receive notifications without login accounts. Google registration creates student accounts only after email confirmation, with administrator approval required for access.

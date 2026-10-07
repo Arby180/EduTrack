@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { DeleteAccountButton } from "./delete-account-button";
 import { api, type RouterInputs, type RouterOutputs } from "~/trpc/react";
 import { Heading, Panel, Field, QueryState, Empty, Badge, useTask } from "./ui";
 type Form = RouterInputs["admin"]["saveUser"];
@@ -97,9 +98,9 @@ export function People() {
         <Panel title={form.id ? "Edit account" : "New account"}>
           {approvalHelp && (
             <p className="notice mb-5" role="status">
-              Assign a student number and select a class, then save. After
-              saving, select Approve access in the account list. A password is
-              optional for Google sign-in.
+              Select the approved role. For students, assign a student number
+              and class. Save, then select Approve access in the account list. A
+              password is optional for Google sign-in.
             </p>
           )}
           <form
@@ -129,7 +130,7 @@ export function People() {
               </Field>
               <Field label="Role">
                 <select
-                  disabled={!!form.id}
+                  disabled={!!form.id && !approvalHelp}
                   value={form.role}
                   onChange={(e) =>
                     setForm({
@@ -331,12 +332,23 @@ export function People() {
                       <button className="btn secondary" onClick={() => edit(u)}>
                         Edit
                       </button>
+                      <DeleteAccountButton
+                        id={u.id}
+                        name={u.name ?? u.email}
+                        onDeleted={() => {
+                          if (form.id === u.id) {
+                            setShow(false);
+                            setForm(blank);
+                          }
+                        }}
+                      />
                       <button
                         className="btn secondary"
                         disabled={task.busy}
                         onClick={() => {
                           if (
                             u.approvalPending &&
+                            u.role === "student" &&
                             (!u.classRoomId ||
                               !u.studentNumber ||
                               u.studentNumber.startsWith("PENDING-"))

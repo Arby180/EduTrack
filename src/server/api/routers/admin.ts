@@ -1,5 +1,17 @@
 import { TRPCError } from "@trpc/server";
-import { asc, eq, and, ne } from "drizzle-orm";
+import { asc, eq, and, ne, or, inArray } from "drizzle-orm";
+import {
+  accounts,
+  sessions,
+  verificationTokens,
+  googleRegistrations,
+  attendance,
+  grades,
+  notifications,
+  smsLogs,
+  emailLogs,
+  announcements,
+} from "~/server/db/schema";
 import { z } from "zod";
 import { classRooms, subjects, users, students } from "~/server/db/schema";
 import { createTRPCRouter, roleProcedure } from "~/server/api/trpc";
@@ -39,6 +51,90 @@ const classInput = z.object({
   schoolYear: z.string().trim().max(32),
 });
 export const adminRouter = createTRPCRouter({
+  deleteUser: admin
+    .input(z.object({ id: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      if (input.id === ctx.session.user.id)
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "You cannot delete your own account.",
+        });
+      return ctx.db.transaction(async (tx) => {
+        const [target] = await tx
+          .select()
+          .from(users)
+          .where(eq(users.id, input.id))
+          .for("update");
+        if (!target)
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Account already deleted.",
+          });
+        const attendanceIds = tx
+          .select({ id: attendance.id })
+          .from(attendance)
+          .where(eq(attendance.studentId, input.id));
+        const notificationIds = tx
+          .select({ id: notifications.id })
+          .from(notifications)
+          .where(
+            or(
+              eq(notifications.recipientId, input.id),
+              inArray(notifications.attendanceId, attendanceIds),
+            ),
+          );
+        await tx
+          .delete(emailLogs)
+          .where(inArray(emailLogs.notificationId, notificationIds));
+        await tx
+          .delete(smsLogs)
+          .where(inArray(smsLogs.notificationId, notificationIds));
+        await tx
+          .delete(notifications)
+          .where(inArray(notifications.id, notificationIds));
+        await tx.delete(grades).where(eq(grades.studentId, input.id));
+        await tx.delete(attendance).where(eq(attendance.studentId, input.id));
+        // Preserve other students' records; transfer required staff references to the deleting admin.
+        await tx
+          .update(grades)
+          .set({ recordedById: ctx.session.user.id })
+          .where(eq(grades.recordedById, input.id));
+        await tx
+          .update(attendance)
+          .set({ recordedById: ctx.session.user.id })
+          .where(eq(attendance.recordedById, input.id));
+        await tx
+          .update(announcements)
+          .set({ createdById: null })
+          .where(eq(announcements.createdById, input.id));
+        await tx
+          .update(classRooms)
+          .set({ adviserId: null })
+          .where(eq(classRooms.adviserId, input.id));
+        const googleIds = tx
+          .select({ id: accounts.providerAccountId })
+          .from(accounts)
+          .where(
+            and(eq(accounts.userId, input.id), eq(accounts.provider, "google")),
+          );
+        await tx
+          .delete(googleRegistrations)
+          .where(
+            or(
+              eq(googleRegistrations.email, target.email),
+              inArray(googleRegistrations.googleId, googleIds),
+            ),
+          );
+        await tx
+          .delete(verificationTokens)
+          .where(eq(verificationTokens.identifier, target.email));
+        await tx.delete(sessions).where(eq(sessions.userId, input.id));
+        await tx.delete(accounts).where(eq(accounts.userId, input.id));
+        await tx.delete(students).where(eq(students.userId, input.id));
+        await tx.delete(users).where(eq(users.id, input.id));
+        return { id: input.id };
+      });
+    }),
   listUsers: admin.query(({ ctx }) =>
     ctx.db
       .select({
@@ -78,12 +174,15 @@ export const adminRouter = createTRPCRouter({
           where: eq(users.id, input.id),
         });
         if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
-        if (existing.role !== input.role)
+        if (existing.role !== input.role && !existing.approvalPending)
           throw new TRPCError({
             code: "BAD_REQUEST",
             message:
               "Account roles cannot be changed. Create a separate account.",
           });
+        if (existing.approvalPending && input.role === "admin") {
+          await tx.delete(students).where(eq(students.userId, existing.id));
+        }
       }
       const duplicate = await tx.query.users.findFirst({
         where: and(
@@ -122,6 +221,7 @@ export const adminRouter = createTRPCRouter({
       const values = {
         name: input.name,
         email: input.email,
+        role: input.role,
         ...(input.password
           ? { passwordHash: await hashPassword(input.password) }
           : {}),
@@ -160,7 +260,11 @@ export const adminRouter = createTRPCRouter({
         where: eq(users.id, input.id),
       });
       if (!target) throw new TRPCError({ code: "NOT_FOUND" });
-      if (input.isActive && target.approvalPending) {
+      if (
+        input.isActive &&
+        target.approvalPending &&
+        target.role === "student"
+      ) {
         const profile = await ctx.db.query.students.findFirst({
           where: eq(students.userId, input.id),
         });

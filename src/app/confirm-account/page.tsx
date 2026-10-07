@@ -23,6 +23,8 @@ async function confirm(form: FormData) {
       result = "unavailable";
     }
   }
+  if (result === "pending") redirect("/login?error=ApprovalPending");
+  if (result === "existing") redirect("/login");
   redirect(`/confirm-account?result=${result}`);
 }
 

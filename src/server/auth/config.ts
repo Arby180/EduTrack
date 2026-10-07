@@ -14,7 +14,7 @@ import {
   verificationTokens,
 } from "~/server/db/schema";
 import { verifyPassword } from "~/server/auth/password";
-import { autoRegisterGoogle } from "~/server/auth/auto-register-google";
+import { requestGoogleRegistration } from "~/server/auth/google-registration";
 
 /**
  * Module augmentation for `next-auth` types. Allows us to add custom properties to the `session`
@@ -106,16 +106,15 @@ export const authConfig = {
         if (existing.approvalPending) return "/login?error=ApprovalPending";
         return existing.isActive;
       }
-      const created = await autoRegisterGoogle({
+      const result = await requestGoogleRegistration({
         email: profile.email.toLowerCase(),
         name: (profile.name ?? profile.email).slice(0, 255),
         googleId: account.providerAccountId,
       });
-      return (
-        !!created?.isActive &&
-        !created.approvalPending &&
-        (created.role === "student" || created.role === "admin")
-      );
+      // This redirect stops Auth.js before account or session creation.
+      return result === "unavailable"
+        ? "/login?error=RegistrationEmailUnavailable"
+        : `/check-email?status=${result}`;
     },
     async jwt({ token, user }) {
       const id = user?.id ?? token.id;
