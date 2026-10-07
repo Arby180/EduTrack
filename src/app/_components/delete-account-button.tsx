@@ -47,7 +47,7 @@ export function DeleteAccountButton({
           attendance, notifications and sign-in links. This cannot be undone.
           Using the same Google account again will require email confirmation
           and admin approval as a new registration.
-          Other students' records are retained. Required staff references on
+          Other students&apos; records are retained. Required staff references on
           records created by this account transfer to you.
         </p>
         {error && (
