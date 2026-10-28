@@ -404,6 +404,9 @@
 .schoolLogin:hover {
   background: #e0efff;
 }
+.mobileMenuButton {
+  display: none;
+}
 @media (max-width: 1000px) {
   .header {
     flex-wrap: wrap;
@@ -423,6 +426,51 @@
   }
   .schoolLogin {
     font-size: 11px;
+  }
+}
+
+@media (max-width: 600px) {
+  .header {
+    flex-wrap: nowrap;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 60px;
+    padding: 9px 16px;
+  }
+  .headerActions {
+    display: none;
+  }
+  .mobileMenuButton {
+    display: grid;
+    width: 40px;
+    height: 40px;
+    place-items: center;
+    border: 0;
+    border-radius: 9px;
+    background: #f0f6ff;
+    color: #155595;
+  }
+  .navigation {
+    display: none;
+    position: absolute;
+    top: 100%;
+    right: 0;
+    left: 0;
+    width: 100%;
+    margin: 0;
+    padding: 9px 16px 14px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 2px;
+    background: #fff;
+    border-bottom: 1px solid #e4eef8;
+    box-shadow: 0 12px 20px #07355b12;
+  }
+  .navigationOpen {
+    display: flex;
+  }
+  .navigation a {
+    padding: 12px 8px;
   }
 }
 /* Public-page section layout and interactions. */

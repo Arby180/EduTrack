@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LogoutButton } from "./logout-button";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Icon } from "./icon";
 export function Shell({
   children,
@@ -15,6 +15,21 @@ export function Shell({
 }) {
   const path = usePathname();
   const [search, setSearch] = useState("");
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  useEffect(() => setMobileMenuOpen(false), [path]);
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") setMobileMenuOpen(false);
+    }
+    window.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [mobileMenuOpen]);
   const icons: Record<string, string> = {
     Overview: "home",
     People: "people",
@@ -39,9 +54,26 @@ export function Shell({
     ["/announcements", "Announcements"],
     ["/notifications", "Notifications"],
   ];
+  const overviewPath = role === "admin" ? "/admin" : "/student";
+  const mobileLinks = [
+    [overviewPath, "Home", "home"],
+    ["/attendance", "Attendance", "calendar"],
+    ["/grades", "Grades", "book"],
+  ];
   return (
     <div className="app-frame">
-      <aside className="sidebar">
+      {mobileMenuOpen && (
+        <button
+          type="button"
+          className="mobile-nav-backdrop"
+          aria-label="Close navigation menu"
+          onClick={() => setMobileMenuOpen(false)}
+        />
+      )}
+      <aside
+        id="mobile-main-navigation"
+        className={mobileMenuOpen ? "sidebar mobile-open" : "sidebar"}
+      >
         <Link href="/dashboard" className="brand">
           <span className="brand-mark">
             <Icon size={27} />
@@ -75,6 +107,25 @@ export function Shell({
         </div>
       </aside>
       <div className="workspace">
+        <header className="mobile-header">
+          <Link href="/dashboard" className="brand">
+            <span className="brand-mark">
+              <Icon size={25} />
+            </span>
+            EduTrack
+            <span className="brand-dot">.</span>
+          </Link>
+          <button
+            type="button"
+            className="mobile-menu-button"
+            aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
+            aria-expanded={mobileMenuOpen}
+            aria-controls="mobile-main-navigation"
+            onClick={() => setMobileMenuOpen((open) => !open)}
+          >
+            <Icon name={mobileMenuOpen ? "close" : "menu"} size={21} />
+          </button>
+        </header>
         <header className="topbar">
           <div className="workspace-search">
             <Icon name="search" size={16} />
@@ -117,6 +168,41 @@ export function Shell({
           </span>
           <span>A clearer picture of every school day.</span>
         </footer>
+        <nav className="mobile-bottom-nav" aria-label="Quick navigation">
+          {mobileLinks.map(([href, label, icon]) => (
+            <Link
+              key={href}
+              href={href!}
+              className={
+                path === href ||
+                (href === overviewPath && path === "/dashboard")
+                  ? "mobile-bottom-link active"
+                  : "mobile-bottom-link"
+              }
+              aria-current={path === href ? "page" : undefined}
+            >
+              <Icon name={icon} size={19} />
+              <span>{label}</span>
+            </Link>
+          ))}
+          <button
+            type="button"
+            className={
+              mobileMenuOpen ||
+              (!mobileLinks.some(([href]) => href === path) &&
+                path !== "/dashboard")
+                ? "mobile-bottom-link active"
+                : "mobile-bottom-link"
+            }
+            aria-label={mobileMenuOpen ? "Close more menu" : "Open more menu"}
+            aria-expanded={mobileMenuOpen}
+            aria-controls="mobile-main-navigation"
+            onClick={() => setMobileMenuOpen((open) => !open)}
+          >
+            <Icon name="more" size={19} />
+            <span>More</span>
+          </button>
+        </nav>
       </div>
     </div>
   );
