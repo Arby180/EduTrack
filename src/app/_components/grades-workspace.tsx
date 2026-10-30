@@ -1,7 +1,15 @@
 "use client";
 import { useState } from "react";
 import { api, type RouterInputs } from "~/trpc/react";
-import { Heading, Panel, Field, Empty, QueryState, useTask } from "./ui";
+import {
+  Heading,
+  Panel,
+  Field,
+  Empty,
+  QueryState,
+  useTask,
+  useConfirmation,
+} from "./ui";
 type Form = RouterInputs["grade"]["save"];
 const blank: Form = {
   studentId: "",
@@ -41,6 +49,7 @@ export function GradesWorkspace({
   const save = api.grade.save.useMutation();
   const remove = api.grade.remove.useMutation();
   const task = useTask();
+  const confirmation = useConfirmation();
   const student = people.data?.find((p) => p.id === studentId);
   const subjectOptions =
     subjects.data?.filter(
@@ -105,7 +114,7 @@ export function GradesWorkspace({
         </div>
         {role === "admin" && (
           <QueryState
-            loading={people.isLoading || subjects.isLoading}
+            loading={people.isFetching || subjects.isFetching}
             error={people.error ?? subjects.error}
           />
         )}
@@ -235,7 +244,7 @@ export function GradesWorkspace({
       {studentId ? (
         <>
           <QueryState
-            loading={query.isLoading || summary.isLoading}
+            loading={query.isFetching || summary.isFetching}
             error={query.error ?? summary.error}
           />
           <Panel title="Assessment records">
@@ -286,15 +295,20 @@ export function GradesWorkspace({
                             <button
                               className="btn danger"
                               disabled={task.busy}
-                              onClick={() => {
-                                if (
-                                  confirm("Delete this assessment permanently?")
-                                )
-                                  void task.run(
-                                    () => remove.mutateAsync({ id: g.id }),
-                                    "Assessment deleted.",
-                                  );
-                              }}
+                              onClick={() =>
+                                confirmation.requestConfirmation({
+                                  title: "Delete assessment?",
+                                  description:
+                                    "This assessment and its score will be permanently deleted. This action cannot be undone.",
+                                  confirmText: "Delete assessment",
+                                  destructive: true,
+                                  onConfirm: () =>
+                                    void task.run(
+                                      () => remove.mutateAsync({ id: g.id }),
+                                      "Assessment deleted.",
+                                    ),
+                                })
+                              }
                             >
                               Delete
                             </button>
@@ -344,6 +358,7 @@ export function GradesWorkspace({
       ) : (
         <Empty>Select a student to view or enter grades.</Empty>
       )}
+      {confirmation.confirmationDialog}
     </>
   );
 }

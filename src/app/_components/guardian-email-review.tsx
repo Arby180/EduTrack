@@ -1,6 +1,13 @@
 "use client";
 import { api } from "~/trpc/react";
-import { Badge, Empty, Panel, QueryState, useTask } from "./ui";
+import {
+  Badge,
+  Empty,
+  Panel,
+  QueryState,
+  useTask,
+  useConfirmation,
+} from "./ui";
 
 export function GuardianEmailReview({ configured }: { configured: boolean }) {
   const history = api.notification.emailHistory.useQuery(undefined, {
@@ -10,10 +17,11 @@ export function GuardianEmailReview({ configured }: { configured: boolean }) {
   const cancel = api.notification.cancelEmail.useMutation();
   const refresh = api.notification.refreshEmail.useMutation();
   const task = useTask();
+  const confirmation = useConfirmation();
   return (
     <Panel title="Guardian email review & delivery history">
       {task.feedback}
-      <QueryState loading={history.isLoading} error={history.error} />
+      <QueryState loading={history.isFetching} error={history.error} />
       <p className="muted mb-4">
         Review the recipient and message before sending. Accepted means Resend
         received the request; it does not confirm inbox delivery.
@@ -53,18 +61,23 @@ export function GuardianEmailReview({ configured }: { configured: boolean }) {
                         <button
                           className="btn"
                           disabled={task.busy || !configured}
-                          onClick={() => {
-                            if (confirm(`Send this email to ${item.toEmail}?`))
-                              void task.run(async () => {
-                                const result = await send.mutateAsync({
-                                  id: item.id,
-                                });
-                                if (result.status !== "accepted")
-                                  throw new Error(
-                                    "Email delivery was not confirmed. Review the status and provider logs before trying again.",
-                                  );
-                              }, "Email accepted by Resend. Refresh status to check delivery.");
-                          }}
+                          onClick={() =>
+                            confirmation.requestConfirmation({
+                              title: "Send guardian email?",
+                              description: `This will send the reviewed email to ${item.toEmail}. Verify the recipient and message before continuing.`,
+                              confirmText: "Send email",
+                              onConfirm: () =>
+                                void task.run(async () => {
+                                  const result = await send.mutateAsync({
+                                    id: item.id,
+                                  });
+                                  if (result.status !== "accepted")
+                                    throw new Error(
+                                      "Email delivery was not confirmed. Review the status and provider logs before trying again.",
+                                    );
+                                }, "Email accepted by Resend. Refresh status to check delivery."),
+                            })
+                          }
                         >
                           Send email
                         </button>
@@ -114,6 +127,7 @@ export function GuardianEmailReview({ configured }: { configured: boolean }) {
           an absence or prepare a school message.
         </Empty>
       )}
+      {confirmation.confirmationDialog}
     </Panel>
   );
 }

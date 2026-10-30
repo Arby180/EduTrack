@@ -3,6 +3,7 @@
 import { useId, useRef, useState } from "react";
 import { signOut } from "next-auth/react";
 import { Icon } from "./icon";
+import { LoadingScreen } from "./ui";
 
 export function LogoutButton() {
   const dialog = useRef<HTMLDialogElement>(null);
@@ -48,6 +49,7 @@ export function LogoutButton() {
             {error}
           </p>
         )}
+        {busy && <LoadingScreen mode="inline" label="Signing you out..." />}
         <div className="logout-dialog-actions">
           <button
             className="btn secondary"

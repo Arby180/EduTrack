@@ -1,7 +1,15 @@
 "use client";
 import { useState } from "react";
 import { api, type RouterInputs } from "~/trpc/react";
-import { Heading, Panel, Field, QueryState, Empty, useTask } from "./ui";
+import {
+  Heading,
+  Panel,
+  Field,
+  QueryState,
+  Empty,
+  useTask,
+  useConfirmation,
+} from "./ui";
 export function Classes() {
   const classes = api.admin.listClasses.useQuery();
   const subjects = api.admin.listSubjects.useQuery();
@@ -10,6 +18,7 @@ export function Classes() {
   const deleteClass = api.admin.deleteClass.useMutation();
   const deleteSubject = api.admin.deleteSubject.useMutation();
   const task = useTask();
+  const confirmation = useConfirmation();
   const blank = { name: "", gradeLevel: "", schoolYear: "" };
   const [form, setForm] = useState<RouterInputs["admin"]["saveClass"]>(blank);
   const [subject, setSubject] = useState<RouterInputs["admin"]["saveSubject"]>({
@@ -136,7 +145,7 @@ export function Classes() {
         </Panel>
       </div>
       <QueryState
-        loading={classes.isLoading || subjects.isLoading}
+        loading={classes.isFetching || subjects.isFetching}
         error={classes.error ?? subjects.error}
       />
       <Panel title="Class directory">
@@ -184,13 +193,20 @@ export function Classes() {
                       <button
                         className="btn danger"
                         disabled={task.busy}
-                        onClick={() => {
-                          if (confirm(`Delete class ${c.name}?`))
-                            void task.run(
-                              () => deleteClass.mutateAsync({ id: c.id }),
-                              "Class deleted.",
-                            );
-                        }}
+                        onClick={() =>
+                          confirmation.requestConfirmation({
+                            title: `Delete class ${c.name}?`,
+                            description:
+                              "The class can only be deleted if it has no related records. This action cannot be undone.",
+                            confirmText: "Delete class",
+                            destructive: true,
+                            onConfirm: () =>
+                              void task.run(
+                                () => deleteClass.mutateAsync({ id: c.id }),
+                                "Class deleted.",
+                              ),
+                          })
+                        }
                       >
                         Delete
                       </button>
@@ -234,13 +250,20 @@ export function Classes() {
                       <button
                         className="btn danger"
                         disabled={task.busy}
-                        onClick={() => {
-                          if (confirm(`Delete subject ${s.name}?`))
-                            void task.run(
-                              () => deleteSubject.mutateAsync({ id: s.id }),
-                              "Subject deleted.",
-                            );
-                        }}
+                        onClick={() =>
+                          confirmation.requestConfirmation({
+                            title: `Delete subject ${s.name}?`,
+                            description:
+                              "The subject can only be deleted if it has no related records. This action cannot be undone.",
+                            confirmText: "Delete subject",
+                            destructive: true,
+                            onConfirm: () =>
+                              void task.run(
+                                () => deleteSubject.mutateAsync({ id: s.id }),
+                                "Subject deleted.",
+                              ),
+                          })
+                        }
                       >
                         Delete
                       </button>
@@ -253,6 +276,7 @@ export function Classes() {
         </div>
         {!subjects.data?.length && <Empty>No subjects yet.</Empty>}
       </Panel>
+      {confirmation.confirmationDialog}
     </>
   );
 }

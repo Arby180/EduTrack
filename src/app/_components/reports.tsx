@@ -224,7 +224,7 @@ export function Reports({
           )}
         </Panel>
       )}
-      <QueryState loading={query.isLoading} error={query.error} />
+      <QueryState loading={query.isFetching} error={query.error} />
       {d && (
         <>
           <div className="stat-grid">

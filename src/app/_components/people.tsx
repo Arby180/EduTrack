@@ -2,7 +2,16 @@
 import { useState } from "react";
 import { DeleteAccountButton } from "./delete-account-button";
 import { api, type RouterInputs, type RouterOutputs } from "~/trpc/react";
-import { Heading, Panel, Field, QueryState, Empty, Badge, useTask } from "./ui";
+import {
+  Heading,
+  Panel,
+  Field,
+  QueryState,
+  Empty,
+  Badge,
+  useTask,
+  useConfirmation,
+} from "./ui";
 type Form = RouterInputs["admin"]["saveUser"];
 const blank: Form = {
   name: "",
@@ -27,6 +36,7 @@ export function People() {
   const save = api.admin.saveUser.useMutation();
   const active = api.admin.setActive.useMutation();
   const task = useTask();
+  const confirmation = useConfirmation();
   const [form, setForm] = useState<Form>(blank);
   const [show, setShow] = useState(false);
   const [search, setSearch] = useState("");
@@ -283,7 +293,7 @@ export function People() {
           </Field>
           <span className="badge">{rows.length} accounts</span>
         </div>
-        <QueryState loading={query.isLoading} error={query.error} />
+        <QueryState loading={query.isFetching} error={query.error} />
         <div className="table-wrap">
           <table>
             <thead>
@@ -356,17 +366,26 @@ export function People() {
                             edit(u);
                             return;
                           }
-                          if (
-                            window.confirm(
-                              `${u.approvalPending ? "Approve access for" : u.isActive ? "Deactivate" : "Reactivate"} ${u.name}?`,
-                            )
-                          )
-                            void task.run(() =>
-                              active.mutateAsync({
-                                id: u.id,
-                                isActive: !u.isActive,
-                              }),
-                            );
+                          const action = u.approvalPending
+                            ? "Approve access"
+                            : u.isActive
+                              ? "Deactivate"
+                              : "Reactivate";
+                          confirmation.requestConfirmation({
+                            title: `${action} ${u.name}?`,
+                            description: u.isActive
+                              ? "This will prevent the account from signing in while preserving its existing records."
+                              : "This will allow the account to sign in to EduTrack.",
+                            confirmText: action,
+                            destructive: u.isActive,
+                            onConfirm: () =>
+                              void task.run(() =>
+                                active.mutateAsync({
+                                  id: u.id,
+                                  isActive: !u.isActive,
+                                }),
+                              ),
+                          });
                         }}
                       >
                         {u.approvalPending
@@ -390,6 +409,7 @@ export function People() {
         Deactivation blocks login while preserving academic records. To enable
         Google login, use the student&apos;s verified Google email.
       </p>
+      {confirmation.confirmationDialog}
     </>
   );
 }

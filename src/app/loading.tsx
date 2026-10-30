@@ -1,7 +1,5 @@
+import { LoadingScreen } from "./_components/ui";
+
 export default function Loading() {
-  return (
-    <p className="empty" role="status">
-      Loading your workspace...
-    </p>
-  );
+  return <LoadingScreen />;
 }

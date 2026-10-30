@@ -2,7 +2,15 @@
 import { useState } from "react";
 import Link from "next/link";
 import { api, type RouterInputs } from "~/trpc/react";
-import { Heading, Panel, Field, Empty, QueryState, useTask } from "./ui";
+import {
+  Heading,
+  Panel,
+  Field,
+  Empty,
+  QueryState,
+  useTask,
+  useConfirmation,
+} from "./ui";
 
 export function AnnouncementsWorkspace({ role }: { role: string }) {
   const query = api.announcement.list.useQuery();
@@ -14,6 +22,7 @@ export function AnnouncementsWorkspace({ role }: { role: string }) {
   });
   const [show, setShow] = useState(false);
   const task = useTask();
+  const confirmation = useConfirmation();
   return (
     <>
       <Heading
@@ -79,7 +88,7 @@ export function AnnouncementsWorkspace({ role }: { role: string }) {
           </form>
         </Panel>
       )}
-      <QueryState loading={query.isLoading} error={query.error} />
+      <QueryState loading={query.isFetching} error={query.error} />
       {query.data?.map((a) => (
         <Panel key={a.id}>
           <article>
@@ -100,13 +109,20 @@ export function AnnouncementsWorkspace({ role }: { role: string }) {
                   <button
                     className="btn danger"
                     disabled={task.busy}
-                    onClick={() => {
-                      if (confirm("Delete this announcement?"))
-                        void task.run(
-                          () => remove.mutateAsync({ id: a.id }),
-                          "Announcement deleted.",
-                        );
-                    }}
+                    onClick={() =>
+                      confirmation.requestConfirmation({
+                        title: "Delete announcement?",
+                        description:
+                          "This announcement will be permanently removed and no longer visible to users.",
+                        confirmText: "Delete announcement",
+                        destructive: true,
+                        onConfirm: () =>
+                          void task.run(
+                            () => remove.mutateAsync({ id: a.id }),
+                            "Announcement deleted.",
+                          ),
+                      })
+                    }
                   >
                     Delete
                   </button>
@@ -132,6 +148,7 @@ export function AnnouncementsWorkspace({ role }: { role: string }) {
           .
         </p>
       )}
+      {confirmation.confirmationDialog}
     </>
   );
 }

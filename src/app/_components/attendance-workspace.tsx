@@ -2,7 +2,16 @@
 import { useState } from "react";
 import { api, type RouterInputs } from "~/trpc/react";
 import { schoolToday } from "~/lib/school";
-import { Heading, Panel, Field, Empty, QueryState, Badge, useTask } from "./ui";
+import {
+  Heading,
+  Panel,
+  Field,
+  Empty,
+  QueryState,
+  Badge,
+  useTask,
+  useConfirmation,
+} from "./ui";
 const statuses = ["present", "absent", "late", "excused"] as const;
 type Row = RouterInputs["attendance"]["saveClass"]["rows"][number];
 export function AttendanceWorkspace({ role }: { role: string }) {
@@ -23,6 +32,7 @@ export function AttendanceWorkspace({ role }: { role: string }) {
   );
   const save = api.attendance.saveClass.useMutation();
   const task = useTask();
+  const confirmation = useConfirmation();
   const rows =
     roster.data?.map((s) => ({
       ...s,
@@ -30,13 +40,22 @@ export function AttendanceWorkspace({ role }: { role: string }) {
       remarks: draft[s.id]?.remarks ?? s.record?.remarks ?? "",
     })) ?? [];
   function changeFilter(update: () => void) {
-    if (
-      !Object.keys(draft).length ||
-      confirm("Discard unsaved attendance changes?")
-    ) {
+    if (!Object.keys(draft).length) {
       setDraft({});
       update();
+      return;
     }
+    confirmation.requestConfirmation({
+      title: "Discard unsaved changes?",
+      description:
+        "Changing the class or date will discard attendance edits that have not been saved.",
+      confirmText: "Discard changes",
+      destructive: true,
+      onConfirm: () => {
+        setDraft({});
+        update();
+      },
+    });
   }
   return (
     <>
@@ -81,14 +100,14 @@ export function AttendanceWorkspace({ role }: { role: string }) {
                 />
               </Field>
             </div>
-            <QueryState loading={classes.isLoading} error={classes.error} />
+            <QueryState loading={classes.isFetching} error={classes.error} />
             {!classId && (
               <Empty>Select a class to load its active students.</Empty>
             )}
           </Panel>
           {classId && (
             <Panel title="Class register">
-              <QueryState loading={roster.isLoading} error={roster.error} />
+              <QueryState loading={roster.isFetching} error={roster.error} />
               {rows.length > 0 && (
                 <>
                   <div className="actions mb-4">
@@ -229,7 +248,7 @@ export function AttendanceWorkspace({ role }: { role: string }) {
               ))}
             </select>
           </Field>
-          <QueryState loading={history.isLoading} error={history.error} />
+          <QueryState loading={history.isFetching} error={history.error} />
           <div className="table-wrap mt-5">
             <table>
               <thead>
@@ -258,6 +277,7 @@ export function AttendanceWorkspace({ role }: { role: string }) {
             .length && <Empty>No attendance records match this filter.</Empty>}
         </Panel>
       )}
+      {confirmation.confirmationDialog}
     </>
   );
 }

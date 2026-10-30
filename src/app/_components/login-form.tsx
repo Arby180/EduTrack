@@ -1,6 +1,7 @@
 "use client";
 import { signIn } from "next-auth/react";
 import { useState } from "react";
+import { LoadingScreen, MessageDialog } from "./ui";
 export function LoginForm({
   googleEnabled,
   initialError,
@@ -55,11 +56,6 @@ export function LoginForm({
             required
           />
         </label>
-        {error && (
-          <p className="notice error" role="alert">
-            {error}
-          </p>
-        )}
         <button className="btn" disabled={busy}>
           {busy ? "Signing in..." : "Sign in"}
         </button>
@@ -79,6 +75,15 @@ export function LoginForm({
           Continue with Google
         </button>
       )}
+      {error && (
+        <MessageDialog
+          title="Sign-in problem"
+          message={error}
+          tone="error"
+          onClose={() => setError("")}
+        />
+      )}
+      {busy && <LoadingScreen mode="overlay" label="Signing you in..." />}
       <p className="muted mt-5 text-xs leading-5">
         Use your school account, or register with Google. New Google accounts
         require email confirmation and administrator approval.

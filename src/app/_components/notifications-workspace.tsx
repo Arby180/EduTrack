@@ -1,7 +1,16 @@
 "use client";
 import { useState } from "react";
 import { api } from "~/trpc/react";
-import { Heading, Panel, Field, Empty, QueryState, Badge, useTask } from "./ui";
+import {
+  Heading,
+  Panel,
+  Field,
+  Empty,
+  QueryState,
+  Badge,
+  useTask,
+  useConfirmation,
+} from "./ui";
 import { GuardianEmailReview } from "./guardian-email-review";
 
 export function NotificationsWorkspace({ role }: { role: string }) {
@@ -22,6 +31,7 @@ export function NotificationsWorkspace({ role }: { role: string }) {
   const [selected, setSelected] = useState<string[]>([]);
   const [message, setMessage] = useState("");
   const task = useTask();
+  const confirmation = useConfirmation();
   const students =
     people.data?.filter((p) => p.role === "student" && p.isActive) ?? [];
   return (
@@ -38,7 +48,7 @@ export function NotificationsWorkspace({ role }: { role: string }) {
       {admin && (
         <>
           <Panel title="Connections">
-            <QueryState loading={status.isLoading} error={status.error} />
+            <QueryState loading={status.isFetching} error={status.error} />
             <div className="actions">
               <Badge>
                 Google login:{" "}
@@ -88,7 +98,7 @@ export function NotificationsWorkspace({ role }: { role: string }) {
               </Field>
               <fieldset className="mt-5">
                 <legend className="font-semibold">Recipients</legend>
-                <QueryState loading={people.isLoading} error={people.error} />
+                <QueryState loading={people.isFetching} error={people.error} />
                 <button
                   type="button"
                   className="btn secondary my-3"
@@ -144,7 +154,7 @@ export function NotificationsWorkspace({ role }: { role: string }) {
           <GuardianEmailReview configured={!!status.data?.email} />
           {(!!status.data?.twilio || !!history.data?.length) && (
             <Panel title="SMS review & delivery history">
-              <QueryState loading={history.isLoading} error={history.error} />
+              <QueryState loading={history.isFetching} error={history.error} />
               <div className="table-wrap">
                 <table>
                   <thead>
@@ -178,26 +188,29 @@ export function NotificationsWorkspace({ role }: { role: string }) {
                                 <button
                                   className="btn"
                                   disabled={task.busy || !status.data?.twilio}
-                                  onClick={() => {
-                                    if (
-                                      confirm(
-                                        `Send this SMS to ${s.to}? Twilio messaging charges may apply.`,
-                                      )
-                                    )
-                                      void task.run(async () => {
-                                        const result = await send.mutateAsync({
-                                          id: s.id,
-                                        });
-                                        if (
-                                          ["failed", "unknown"].includes(
-                                            result.status,
-                                          )
-                                        )
-                                          throw new Error(
-                                            "SMS was not confirmed. Review its status before attempting another send.",
+                                  onClick={() =>
+                                    confirmation.requestConfirmation({
+                                      title: "Send guardian SMS?",
+                                      description: `This will send the queued SMS to ${s.to}. Twilio messaging charges may apply.`,
+                                      confirmText: "Send SMS",
+                                      onConfirm: () =>
+                                        void task.run(async () => {
+                                          const result = await send.mutateAsync(
+                                            {
+                                              id: s.id,
+                                            },
                                           );
-                                      }, "Message submitted to Twilio. Refresh its status to check delivery.");
-                                  }}
+                                          if (
+                                            ["failed", "unknown"].includes(
+                                              result.status,
+                                            )
+                                          )
+                                            throw new Error(
+                                              "SMS was not confirmed. Review its status before attempting another send.",
+                                            );
+                                        }, "Message submitted to Twilio. Refresh its status to check delivery."),
+                                    })
+                                  }
                                 >
                                   Send SMS
                                 </button>
@@ -249,7 +262,7 @@ export function NotificationsWorkspace({ role }: { role: string }) {
         </>
       )}
       <Panel title={admin ? "School notification history" : "My inbox"}>
-        <QueryState loading={inbox.isLoading} error={inbox.error} />
+        <QueryState loading={inbox.isFetching} error={inbox.error} />
         {inbox.data?.map((n) => (
           <article key={n.id} className="announcement">
             <div className="flex flex-wrap items-center justify-between gap-3">
@@ -277,6 +290,7 @@ export function NotificationsWorkspace({ role }: { role: string }) {
           <Empty>Your notifications will appear here.</Empty>
         )}
       </Panel>
+      {confirmation.confirmationDialog}
     </>
   );
 }

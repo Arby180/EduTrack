@@ -1,6 +1,7 @@
 "use client";
 import { useId, useRef, useState } from "react";
 import { api } from "~/trpc/react";
+import { LoadingScreen } from "./ui";
 
 export function DeleteAccountButton({
   id,
@@ -46,14 +47,17 @@ export function DeleteAccountButton({
           This permanently deletes this account, its student profile, grades,
           attendance, notifications and sign-in links. This cannot be undone.
           Using the same Google account again will require email confirmation
-          and admin approval as a new registration.
-          Other students&apos; records are retained. Required staff references on
-          records created by this account transfer to you.
+          and admin approval as a new registration. Other students&apos; records
+          are retained. Required staff references on records created by this
+          account transfer to you.
         </p>
         {error && (
           <p className="notice error" role="alert">
             {error}
           </p>
+        )}
+        {mutation.isPending && (
+          <LoadingScreen mode="inline" label="Removing the account..." />
         )}
         <div className="logout-dialog-actions">
           <button
